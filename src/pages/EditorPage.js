@@ -1,7 +1,8 @@
 import React, {useState, useRef, useEffect} from 'react';
 import toast from 'react-hot-toast';
 import Client from '../components/Client';
-import Editor from '../components/Editor'
+import Editor from '../components/Editor';
+import Output from '../components/Output';
 import {language, cmtheme} from '../../src/atoms';
 import {useRecoilState} from 'recoil';
 import ACTIONS from '../actions/Actions';
@@ -14,6 +15,8 @@ const EditorPage = () => {
     const [them, setThem] = useRecoilState(cmtheme);
 
     const [clients, setClients] = useState([]);
+    const [output, setOutput] = useState(null);
+    const [showOutput, setShowOutput] = useState(false);
 
     const socketRef = useRef(null);
     const codeRef = useRef(null);
@@ -66,11 +69,23 @@ const EditorPage = () => {
                     });
                 }
             );
+
+            // Listening for code output
+            socketRef.current.on(ACTIONS.CODE_OUTPUT, ({output}) => {
+                setOutput(output);
+                setShowOutput(true);
+                if (output.success) {
+                    toast.success('Code executed successfully!');
+                } else {
+                    toast.error('Code execution failed!');
+                }
+            });
         };
         init();
         return () => {
             socketRef.current.off(ACTIONS.JOINED);
             socketRef.current.off(ACTIONS.DISCONNECTED);
+            socketRef.current.off(ACTIONS.CODE_OUTPUT);
             socketRef.current.disconnect();
         };
     }, []);
@@ -87,6 +102,20 @@ const EditorPage = () => {
 
     function leaveRoom() {
         reactNavigator('/');
+    }
+
+    function runCode() {
+        if (!codeRef.current || codeRef.current.trim() === '') {
+            toast.error('No code to execute!');
+            return;
+        }
+
+        toast.loading('Running code...', {duration: 1000});
+        socketRef.current.emit(ACTIONS.RUN_CODE, {
+            roomId,
+            code: codeRef.current,
+            language: lang,
+        });
     }
 
     if (!location.state) {
@@ -214,6 +243,9 @@ const EditorPage = () => {
                 <button className="btn copyBtn" onClick={copyRoomId}>
                     Copy ROOM ID
                 </button>
+                <button className="btn runBtn" onClick={runCode}>
+                    ▶ Run Code
+                </button>
                 <button className="btn leaveBtn" onClick={leaveRoom}>
                     Leave
                 </button>
@@ -228,6 +260,12 @@ const EditorPage = () => {
                     }}
                 />
             </div>
+
+            <Output 
+                output={output} 
+                isVisible={showOutput} 
+                onClose={() => setShowOutput(false)}
+            />
         </div>
     );
 }

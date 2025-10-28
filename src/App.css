@@ -11,6 +11,8 @@
     --join-hover-color: #0096FF;
     --leave-color: #B90000;
     --leave-hover-color: #FF5733;
+    --run-color: #4aed88;
+    --run-hover-color: #40be70;
 }
 
 body {
@@ -112,6 +114,19 @@ footer a {
     transition: all 0.2s ease-in-out;
 }
 
+.runBtn {
+    background: var(--run-color);
+    color: #000;
+    font-weight: bold;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.runBtn:hover {
+    background: var(--run-hover-color);
+    color: #000;
+}
+
 .createInfo {
     margin: 0 auto;
     margin-top: 20px;
@@ -199,6 +214,11 @@ footer a:hover {
 }
 
 .leaveBtn {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.copyBtn {
     width: 100%;
     margin-top: 20px;
 }
