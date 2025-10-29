@@ -13,6 +13,10 @@
     --leave-hover-color: #FF5733;
     --run-color: #4aed88;
     --run-hover-color: #40be70;
+    --upload-color: #ffa500;
+    --upload-hover-color: #ff8c00;
+    --download-color: #9b59b6;
+    --download-hover-color: #8e44ad;
 }
 
 body {
@@ -127,6 +131,40 @@ footer a {
     color: #000;
 }
 
+.fileButtons {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.uploadBtn {
+    background: var(--upload-color);
+    color: #fff;
+    font-weight: bold;
+    flex: 1;
+    font-size: 14px;
+    padding: 8px;
+}
+
+.uploadBtn:hover {
+    background: var(--upload-hover-color);
+    color: #fff;
+}
+
+.downloadBtn {
+    background: var(--download-color);
+    color: #fff;
+    font-weight: bold;
+    flex: 1;
+    font-size: 14px;
+    padding: 8px;
+}
+
+.downloadBtn:hover {
+    background: var(--download-hover-color);
+    color: #fff;
+}
+
 .createInfo {
     margin: 0 auto;
     margin-top: 20px;
@@ -239,5 +277,58 @@ footer a:hover {
         font-size: 16px;
         line-height: 1.6;
         padding-top: 20px;
+    }
+}
+
+/* CodeMirror Cursor Size Fix */
+.CodeMirror-cursor {
+    border-left-width: 2px !important;
+}
+
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+    line-height: 1.5;
+}
+
+/* Remote Cursor Styles */
+.remote-cursor {
+    position: relative;
+    border-left: 2px solid;
+    margin-left: -1px;
+    height: 1.2em;
+    z-index: 100;
+    animation: blink-cursor 1s step-start infinite;
+}
+
+@keyframes blink-cursor {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
+}
+
+.remote-cursor-label {
+    position: absolute;
+    top: -18px;
+    left: -2px;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 101;
+    animation: fadeOut 3s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0%, 70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
     }
 }

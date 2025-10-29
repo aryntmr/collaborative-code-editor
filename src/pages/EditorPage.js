@@ -118,6 +118,86 @@ const EditorPage = () => {
         });
     }
 
+    // File download functionality
+    function downloadCode() {
+        if (!codeRef.current || codeRef.current.trim() === '') {
+            toast.error('No code to download!');
+            return;
+        }
+
+        // Map language to file extension
+        const extensionMap = {
+            'javascript': 'js',
+            'python': 'py',
+            'clike': 'cpp',
+            'java': 'java',
+            'go': 'go',
+            'rust': 'rs',
+            'ruby': 'rb',
+            'php': 'php',
+            'shell': 'sh',
+            'r': 'r',
+            'css': 'css',
+            'htmlmixed': 'html',
+            'jsx': 'jsx',
+            'markdown': 'md',
+            'sql': 'sql',
+            'xml': 'xml',
+            'yaml': 'yaml',
+            'dart': 'dart',
+            'dockerfile': 'Dockerfile',
+            'django': 'py',
+            'sass': 'scss',
+            'swift': 'swift',
+        };
+
+        const extension = extensionMap[lang] || 'txt';
+        const fileName = `code_${Date.now()}.${extension}`;
+        
+        const blob = new Blob([codeRef.current], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success(`Downloaded as ${fileName}`);
+    }
+
+    // File upload functionality
+    function uploadCode(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            
+            // Update the editor with the file content
+            if (socketRef.current) {
+                socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+                    roomId,
+                    code: content,
+                });
+            }
+            codeRef.current = content;
+            
+            toast.success(`Uploaded ${file.name}`);
+        };
+        
+        reader.onerror = () => {
+            toast.error('Failed to read file');
+        };
+        
+        reader.readAsText(file);
+        
+        // Reset input so same file can be uploaded again
+        event.target.value = '';
+    }
+
     if (!location.state) {
         return <Navigate to="/" />;
     }
@@ -246,6 +326,23 @@ const EditorPage = () => {
                 <button className="btn runBtn" onClick={runCode}>
                     ▶ Run Code
                 </button>
+                
+                <div className="fileButtons">
+                    <button className="btn uploadBtn" onClick={() => document.getElementById('fileInput').click()}>
+                        📁 Upload File
+                    </button>
+                    <input
+                        type="file"
+                        id="fileInput"
+                        style={{display: 'none'}}
+                        onChange={uploadCode}
+                        accept=".js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.cs,.go,.rs,.rb,.php,.sh,.r,.html,.css,.scss,.sass,.xml,.yaml,.yml,.json,.md,.txt,.sql,.swift,.dart"
+                    />
+                    <button className="btn downloadBtn" onClick={downloadCode}>
+                        💾 Download
+                    </button>
+                </div>
+
                 <button className="btn leaveBtn" onClick={leaveRoom}>
                     Leave
                 </button>
@@ -255,6 +352,7 @@ const EditorPage = () => {
                 <Editor
                     socketRef={socketRef}
                     roomId={roomId}
+                    username={location.state?.username}
                     onCodeChange={(code) => {
                         codeRef.current = code;
                     }}

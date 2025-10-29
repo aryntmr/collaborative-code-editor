@@ -41,7 +41,11 @@ function executeCode(code, language, callback) {
     const languageConfig = {
         'javascript': {
             ext: 'js',
-            cmd: (file) => `node ${file}`
+            cmd: (file) => `node ${file}`,
+            wrapCode: (code) => {
+                // Add print function as alias for console.log
+                return `const print = console.log;\n${code}`;
+            }
         },
         'python': {
             ext: 'py',
@@ -87,8 +91,11 @@ function executeCode(code, language, callback) {
     const config = languageConfig[language] || languageConfig['javascript'];
     fileName = path.join(tempDir, `code_${timestamp}.${config.ext}`);
 
+    // Wrap code if language has a wrapCode function
+    const codeToExecute = config.wrapCode ? config.wrapCode(code) : code;
+
     // Write code to temporary file
-    fs.writeFile(fileName, code, (err) => {
+    fs.writeFile(fileName, codeToExecute, (err) => {
         if (err) {
             callback({
                 success: false,
@@ -161,6 +168,15 @@ io.on('connection', (socket) => {
         executeCode(code, language, (output) => {
             // Broadcast output to all users in the room
             io.in(roomId).emit(ACTIONS.CODE_OUTPUT, {output});
+        });
+    });
+
+    socket.on(ACTIONS.CURSOR_CHANGE, ({roomId, cursor, username}) => {
+        // Broadcast cursor position to all other users in the room
+        socket.in(roomId).emit(ACTIONS.CURSOR_CHANGE, {
+            socketId: socket.id,
+            cursor,
+            username,
         });
     });
 

@@ -7,6 +7,7 @@ const ACTIONS = {
     LEAVE: 'leave',
     RUN_CODE: 'run-code',
     CODE_OUTPUT: 'code-output',
+    CURSOR_CHANGE: 'cursor-change',
 };
 
 module.exports = ACTIONS;

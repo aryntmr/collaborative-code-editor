@@ -107,9 +107,11 @@ import 'codemirror/addon/search/jump-to-line.js';
 import 'codemirror/addon/dialog/dialog.js';
 import 'codemirror/addon/dialog/dialog.css';
 
-const Editor = ({socketRef, roomId, onCodeChange}) => {
+const Editor = ({socketRef, roomId, onCodeChange, username}) => {
 
     const editorRef = useRef(null);
+    const cursorsRef = useRef({});
+    const isRemoteUpdate = useRef(false);
     const lang = useRecoilValue(language);
     const editorTheme = useRecoilValue(cmtheme);
 
@@ -131,11 +133,29 @@ const Editor = ({socketRef, roomId, onCodeChange}) => {
                 const code = instance.getValue();
                 onCodeChange(code);
                 if (origin !== 'setValue') {
+                    console.log('[Editor] Code changed, emitting CODE_CHANGE to room:', roomId);
                     socketRef.current.emit(ACTIONS.CODE_CHANGE, {
                         roomId,
                         code,
                     });
                 }
+            });
+
+            // Track cursor position changes
+            editorRef.current.on('cursorActivity', (instance) => {
+                // Don't emit cursor changes during remote updates
+                if (isRemoteUpdate.current) {
+                    console.log('[Editor] Skipping cursor emission during remote update');
+                    return;
+                }
+                
+                const cursor = instance.getCursor();
+                console.log('[Editor] Cursor moved, emitting CURSOR_CHANGE to room:', roomId, 'cursor:', cursor);
+                socketRef.current.emit(ACTIONS.CURSOR_CHANGE, {
+                    roomId,
+                    cursor: {line: cursor.line, ch: cursor.ch},
+                    username: username,
+                });
             });
 
         }
@@ -144,17 +164,105 @@ const Editor = ({socketRef, roomId, onCodeChange}) => {
 
     useEffect(() => {
         if (socketRef.current) {
-            socketRef.current.on(ACTIONS.CODE_CHANGE, ({code}) => {
-                if (code !== null) {
+            console.log('[Editor] Setting up socket listeners, socket.id:', socketRef.current.id);
+            
+            const handleCodeChange = ({code}) => {
+                console.log('[Editor] Received CODE_CHANGE, current code length:', editorRef.current?.getValue().length, 'new code length:', code?.length);
+                
+                if (code !== null && editorRef.current) {
+                    const currentCode = editorRef.current.getValue();
+                    
+                    // Only update if code is different
+                    if (currentCode === code) {
+                        console.log('[Editor] Code is same, skipping update');
+                        return;
+                    }
+                    
+                    console.log('[Editor] Updating editor with new code');
+                    // Set flag to prevent cursor emission during remote update
+                    isRemoteUpdate.current = true;
+                    
+                    const currentCursor = editorRef.current.getCursor();
                     editorRef.current.setValue(code);
+                    editorRef.current.setCursor(currentCursor);
+                    
+                    // Reset flag immediately (synchronously)
+                    isRemoteUpdate.current = false;
                 }
-            });
-        }
+            };
 
-        return () => {
-            socketRef.current.off(ACTIONS.CODE_CHANGE);
-        };
+            const handleCursorChange = ({socketId, cursor, username}) => {
+                console.log('[Editor] Received CURSOR_CHANGE from socketId:', socketId, 'my socket.id:', socketRef.current?.id);
+                
+                if (!editorRef.current) return;
+                
+                // Skip if this is our own cursor (check against socket.io's id)
+                if (socketRef.current && socketId === socketRef.current.id) {
+                    console.log('[Editor] Skipping own cursor');
+                    return;
+                }
+
+                console.log('[Editor] Displaying remote cursor for', username, 'at', cursor);
+                
+                // Remove old cursor if exists
+                if (cursorsRef.current[socketId]) {
+                    cursorsRef.current[socketId].clear();
+                }
+
+                // Create cursor widget
+                const cursorElement = document.createElement('span');
+                cursorElement.className = 'remote-cursor';
+                cursorElement.style.borderLeftColor = getColorForUser(socketId);
+                
+                const label = document.createElement('span');
+                label.className = 'remote-cursor-label';
+                label.textContent = username;
+                label.style.backgroundColor = getColorForUser(socketId);
+                cursorElement.appendChild(label);
+
+                // Mark the cursor position - use insertLeft: false to avoid breaking text
+                const bookmark = editorRef.current.setBookmark(cursor, {
+                    widget: cursorElement,
+                    insertLeft: false,
+                });
+
+                cursorsRef.current[socketId] = bookmark;
+            };
+
+            const handleDisconnected = ({socketId}) => {
+                console.log('[Editor] User disconnected:', socketId);
+                if (cursorsRef.current[socketId]) {
+                    cursorsRef.current[socketId].clear();
+                    delete cursorsRef.current[socketId];
+                }
+            };
+            
+            socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
+            socketRef.current.on(ACTIONS.CURSOR_CHANGE, handleCursorChange);
+            socketRef.current.on(ACTIONS.DISCONNECTED, handleDisconnected);
+
+            return () => {
+                console.log('[Editor] Cleaning up socket listeners');
+                if (socketRef.current) {
+                    socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
+                    socketRef.current.off(ACTIONS.CURSOR_CHANGE, handleCursorChange);
+                    socketRef.current.off(ACTIONS.DISCONNECTED, handleDisconnected);
+                }
+            };
+        }
     }, [socketRef.current]);
+
+    // Generate consistent colors for users
+    function getColorForUser(socketId) {
+        const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+            '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'
+        ];
+        const hash = socketId.split('').reduce((acc, char) => {
+            return char.charCodeAt(0) + ((acc << 5) - acc);
+        }, 0);
+        return colors[Math.abs(hash) % colors.length];
+    }
 
     return (
         <textarea id="realtimeEditor"></textarea>
