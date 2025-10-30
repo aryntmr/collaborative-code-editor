@@ -39,6 +39,36 @@ Tired of emailing code snippets or struggling with screen sharing for debugging?
 
 ---
 
+## Load Testing & Performance
+
+Test the scalability of your deployment to understand capacity limits:
+
+```bash
+# Start server
+SERVER_PORT=5001 node server.js
+
+# Run load test (default: 10 users, 5/room, 30s)
+npm run load-test
+
+# Custom test
+npm run load-test -- --users 50 --room 5
+
+# View results
+npm run load-test -- --view
+npm run load-test -- --view all
+npm run load-test -- --compare
+```
+
+### Tested Performance Results (Single Node)
+- **1-25 users**: Excellent (<100ms latency) ✅
+- **25-30 users**: Good (~167ms latency) ✅
+- **30-40 users**: Fair (estimated) ⚠️
+- **50+ users**: Poor (>700ms latency) ❌
+
+� **Full Results:** See [TEST_RESULTS.md](./TEST_RESULTS.md) for detailed testing data and optimization strategies.
+
+---
+
 ## Installation
 
 ### Option 1: Using Pre-Built Docker Image (Recommended)

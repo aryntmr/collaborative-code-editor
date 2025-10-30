@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-10-30T07:40:01.866Z",
+  "duration": "32.03s",
+  "durationSeconds": 32.035,
+  "config": {
+    "serverUrl": "http://localhost:5001",
+    "totalUsers": 10,
+    "usersPerRoom": 10,
+    "testDuration": 30000,
+    "codeChangeInterval": 2000,
+    "cursorMoveInterval": 500
+  },
+  "totalUsers": 10,
+  "usersPerRoom": 10,
+  "roomsCreated": 1,
+  "connectionsSuccessful": 10,
+  "connectionsFailed": 0,
+  "connectionSuccessRate": "100.00",
+  "messagesSent": 755,
+  "messagesReceived": 6835,
+  "messagesPerSecond": "23.57",
+  "avgLatency": "0.00",
+  "p95Latency": "0.00",
+  "p99Latency": "0.00",
+  "avgConnectionTime": "4.20",
+  "errors": 0,
+  "errorDetails": [],
+  "memoryUsage": {
+    "rss": 72515584,
+    "heapTotal": 13189120,
+    "heapUsed": 9183184,
+    "external": 2252141,
+    "arrayBuffers": 114762
+  }
+}
