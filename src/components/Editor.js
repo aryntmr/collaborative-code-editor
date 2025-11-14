@@ -241,6 +241,15 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
             socketRef.current.on(ACTIONS.CURSOR_CHANGE, handleCursorChange);
             socketRef.current.on(ACTIONS.DISCONNECTED, handleDisconnected);
 
+            // Listen for force editor updates (e.g., from file upload)
+            const handleForceUpdate = (event) => {
+                if (editorRef.current && event.detail?.code !== undefined) {
+                    console.log('[Editor] Force updating editor with uploaded file');
+                    editorRef.current.setValue(event.detail.code);
+                }
+            };
+            window.addEventListener('forceEditorUpdate', handleForceUpdate);
+
             return () => {
                 console.log('[Editor] Cleaning up socket listeners');
                 if (socketRef.current) {
@@ -248,6 +257,7 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
                     socketRef.current.off(ACTIONS.CURSOR_CHANGE, handleCursorChange);
                     socketRef.current.off(ACTIONS.DISCONNECTED, handleDisconnected);
                 }
+                window.removeEventListener('forceEditorUpdate', handleForceUpdate);
             };
         }
     }, [socketRef.current]);

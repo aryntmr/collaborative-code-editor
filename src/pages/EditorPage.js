@@ -176,14 +176,22 @@ const EditorPage = () => {
         reader.onload = (e) => {
             const content = e.target.result;
             
-            // Update the editor with the file content
+            // Update local code reference
+            codeRef.current = content;
+            
+            // Broadcast to other users in the room
             if (socketRef.current) {
                 socketRef.current.emit(ACTIONS.CODE_CHANGE, {
                     roomId,
                     code: content,
                 });
             }
-            codeRef.current = content;
+            
+            // Force update local editor by emitting to self
+            // This is a workaround since server doesn't send back to sender
+            window.dispatchEvent(new CustomEvent('forceEditorUpdate', { 
+                detail: { code: content } 
+            }));
             
             toast.success(`Uploaded ${file.name}`);
         };
