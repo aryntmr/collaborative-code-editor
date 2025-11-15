@@ -107,13 +107,123 @@ import 'codemirror/addon/search/jump-to-line.js';
 import 'codemirror/addon/dialog/dialog.js';
 import 'codemirror/addon/dialog/dialog.css';
 
+// hints (autocomplete)
+import 'codemirror/addon/hint/show-hint.js';
+import 'codemirror/addon/hint/show-hint.css';
+
 const Editor = ({socketRef, roomId, onCodeChange, username}) => {
 
     const editorRef = useRef(null);
     const cursorsRef = useRef({});
     const isRemoteUpdate = useRef(false);
+    const aiCompletionTimeout = useRef(null);
+    const aiRequestCounter = useRef(0);
     const lang = useRecoilValue(language);
     const editorTheme = useRecoilValue(cmtheme);
+
+    // AI Completion Functions
+    const requestAICompletion = (cm) => {
+        if (!socketRef.current || !cm) return;
+        
+        const cursor = cm.getCursor();
+        const code = cm.getValue();
+        const currentLine = cm.getLine(cursor.line);
+        
+        // Only trigger if there's some meaningful content
+        if (currentLine.trim().length < 2) return;
+        
+        const requestId = ++aiRequestCounter.current;
+        
+        console.log('[AI Completion] Requesting suggestions for:', { cursor, language: lang });
+        
+        socketRef.current.emit(ACTIONS.AI_CODE_COMPLETION, {
+            roomId,
+            code,
+            language: lang,
+            cursor,
+            requestId
+        });
+    };
+
+    const debouncedAICompletion = (cm) => {
+        // Clear previous timeout
+        if (aiCompletionTimeout.current) {
+            clearTimeout(aiCompletionTimeout.current);
+        }
+        
+        // Set new timeout for debounced completion
+        aiCompletionTimeout.current = setTimeout(() => {
+            requestAICompletion(cm);
+        }, 300); // 300ms delay
+    };
+
+    const aiHintFunction = async (cm) => {
+        return new Promise((resolve) => {
+            const cursor = cm.getCursor();
+            const requestId = ++aiRequestCounter.current;
+            
+            // Store the resolve function to call when response arrives
+            const responseHandler = (data) => {
+                console.log('[AI Hint] Response handler called:', { requestId, dataRequestId: data.requestId, match: data.requestId === requestId });
+                
+                if (data.requestId === requestId) {
+                    socketRef.current.off(ACTIONS.AI_COMPLETION_RESPONSE, responseHandler);
+                    
+                    console.log('[AI Hint] Processing suggestions:', data.suggestions);
+                    
+                    if (data.success && data.suggestions.length > 0) {
+                        // For AI completions, we want to insert at cursor position, not replace tokens
+                        const hintData = {
+                            list: data.suggestions.map(suggestion => ({
+                                text: suggestion.text,
+                                displayText: suggestion.displayText,
+                                className: suggestion.className || 'ai-completion-suggestion'
+                            })),
+                            from: cursor, // Insert at current cursor position
+                            to: cursor    // Don't replace any existing text
+                        };
+                        console.log('[AI Hint] Resolving with hint data:', hintData);
+                        resolve(hintData);
+                    } else {
+                        console.log('[AI Hint] No suggestions or failed, resolving null');
+                        resolve(null);
+                    }
+                }
+            };
+            
+            socketRef.current.on(ACTIONS.AI_COMPLETION_RESPONSE, responseHandler);
+            
+            // Request completion
+            socketRef.current.emit(ACTIONS.AI_CODE_COMPLETION, {
+                roomId,
+                code: cm.getValue(),
+                language: lang,
+                cursor,
+                requestId
+            });
+            
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                socketRef.current.off(ACTIONS.AI_COMPLETION_RESPONSE, responseHandler);
+                resolve(null);
+            }, 5000);
+        });
+    };
+
+    const shouldTriggerCompletion = (event) => {
+        // Don't trigger on special keys
+        if (event.ctrlKey || event.altKey || event.metaKey) return false;
+        
+        // Don't trigger on navigation keys
+        const navigationKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'];
+        if (navigationKeys.includes(event.key)) return false;
+        
+        // Don't trigger on function keys
+        if (event.key.startsWith('F') && event.key.length > 1) return false;
+        
+        // Trigger on alphanumeric characters and some symbols
+        return /[a-zA-Z0-9_.$]/.test(event.key);
+    };
 
     useEffect(() => {
         async function init() {
@@ -125,8 +235,22 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
                     autoCloseTags: true,
                     autoCloseBrackets: true,
                     lineNumbers: true,
+                    extraKeys: {
+                        'Ctrl-Space': 'autocomplete',
+                        'Cmd-Space': 'autocomplete'
+                    }
                 }
             );
+
+            // Set up AI hint function after CodeMirror is created
+            editorRef.current.setOption('hintOptions', {
+                hint: aiHintFunction,
+                completeSingle: false,
+                alignWithWord: true,
+                closeOnUnfocus: false
+            });
+
+            console.log('[Editor] CodeMirror initialized with AI hints');
 
             editorRef.current.on('change', (instance, changes) => {
                 const {origin} = changes;
@@ -156,6 +280,24 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
                     cursor: {line: cursor.line, ch: cursor.ch},
                     username: username,
                 });
+            });
+
+            // AI Completion on keyup
+            editorRef.current.on('keyup', (instance, event) => {
+                // Don't trigger during remote updates
+                if (isRemoteUpdate.current) return;
+                
+                // Check if we should trigger AI completion
+                if (shouldTriggerCompletion(event)) {
+                    console.log('[Editor] Triggering AI completion for key:', event.key);
+                    debouncedAICompletion(instance);
+                    
+                    // Also show manual hints for testing
+                    setTimeout(() => {
+                        console.log('[Editor] Manually showing hints');
+                        instance.showHint();
+                    }, 400);
+                }
             });
 
         }
@@ -236,10 +378,24 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
                     delete cursorsRef.current[socketId];
                 }
             };
+
+            const handleAICompletionResponse = ({requestId, suggestions, success, error}) => {
+                console.log('[AI Completion] Received response:', { requestId, success, suggestions: suggestions?.length, error });
+                
+                if (!success) {
+                    console.error('[AI Completion] Error:', error);
+                    return;
+                }
+                
+                console.log('[AI Completion] Full suggestions:', suggestions);
+                // The response is handled by the aiHintFunction promise
+                // This is just for logging and potential future enhancements
+            };
             
             socketRef.current.on(ACTIONS.CODE_CHANGE, handleCodeChange);
             socketRef.current.on(ACTIONS.CURSOR_CHANGE, handleCursorChange);
             socketRef.current.on(ACTIONS.DISCONNECTED, handleDisconnected);
+            socketRef.current.on(ACTIONS.AI_COMPLETION_RESPONSE, handleAICompletionResponse);
 
             return () => {
                 console.log('[Editor] Cleaning up socket listeners');
@@ -247,6 +403,12 @@ const Editor = ({socketRef, roomId, onCodeChange, username}) => {
                     socketRef.current.off(ACTIONS.CODE_CHANGE, handleCodeChange);
                     socketRef.current.off(ACTIONS.CURSOR_CHANGE, handleCursorChange);
                     socketRef.current.off(ACTIONS.DISCONNECTED, handleDisconnected);
+                    socketRef.current.off(ACTIONS.AI_COMPLETION_RESPONSE, handleAICompletionResponse);
+                }
+                
+                // Clear AI completion timeout
+                if (aiCompletionTimeout.current) {
+                    clearTimeout(aiCompletionTimeout.current);
                 }
             };
         }

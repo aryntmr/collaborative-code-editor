@@ -8,6 +8,8 @@ const ACTIONS = {
     RUN_CODE: 'run-code',
     CODE_OUTPUT: 'code-output',
     CURSOR_CHANGE: 'cursor-change',
+    AI_CODE_COMPLETION: 'ai-code-completion',
+    AI_COMPLETION_RESPONSE: 'ai-completion-response',
 };
 
 module.exports = ACTIONS;

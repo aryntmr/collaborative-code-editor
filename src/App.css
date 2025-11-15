@@ -332,3 +332,146 @@ footer a:hover {
         opacity: 0;
     }
 }
+
+/* AI Code Completion Styles */
+.CodeMirror-hints {
+    position: absolute;
+    z-index: 10;
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin: 0;
+    padding: 4px 0;
+    font-family: 'Cascadia Code', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    max-height: 200px;
+    overflow-y: auto;
+    min-width: 200px;
+}
+
+.CodeMirror-hint {
+    padding: 6px 12px;
+    color: #e2e8f0;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.CodeMirror-hint-active,
+.CodeMirror-hint:hover {
+    background: #4a5568;
+    border-left-color: #00d4aa;
+    color: #ffffff;
+}
+
+.ai-completion-suggestion {
+    background: linear-gradient(90deg, rgba(0, 212, 170, 0.1) 0%, rgba(45, 55, 72, 0) 100%);
+    position: relative;
+}
+
+.ai-completion-suggestion::before {
+    content: "✨";
+    font-size: 12px;
+    margin-right: 6px;
+    opacity: 0.7;
+}
+
+.ai-completion-suggestion:hover::before {
+    opacity: 1;
+}
+
+.basic-completion-suggestion {
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.1) 0%, rgba(45, 55, 72, 0) 100%);
+    position: relative;
+}
+
+.basic-completion-suggestion::before {
+    content: "💡";
+    font-size: 12px;
+    margin-right: 6px;
+    opacity: 0.8;
+}
+
+.basic-completion-suggestion:hover::before {
+    opacity: 1;
+}
+
+/* Loading state for AI completions */
+.ai-completion-loading {
+    position: relative;
+}
+
+.ai-completion-loading::after {
+    content: "⏳ AI thinking...";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #a0aec0;
+    font-style: italic;
+}
+
+/* Custom scrollbar for hints */
+.CodeMirror-hints::-webkit-scrollbar {
+    width: 6px;
+}
+
+.CodeMirror-hints::-webkit-scrollbar-track {
+    background: #2d3748;
+}
+
+.CodeMirror-hints::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 3px;
+}
+
+.CodeMirror-hints::-webkit-scrollbar-thumb:hover {
+    background: #718096;
+}
+
+/* Dark theme overrides */
+.CodeMirror.cm-s-darcula .CodeMirror-hints,
+.CodeMirror.cm-s-dracula .CodeMirror-hints,
+.CodeMirror.cm-s-material .CodeMirror-hints,
+.CodeMirror.cm-s-material-darker .CodeMirror-hints {
+    background: #1a202c;
+    border-color: #2d3748;
+}
+
+.CodeMirror.cm-s-darcula .CodeMirror-hint,
+.CodeMirror.cm-s-dracula .CodeMirror-hint,
+.CodeMirror.cm-s-material .CodeMirror-hint,
+.CodeMirror.cm-s-material-darker .CodeMirror-hint {
+    color: #e2e8f0;
+}
+
+/* Light theme overrides */
+.CodeMirror.cm-s-default .CodeMirror-hints,
+.CodeMirror.cm-s-eclipse .CodeMirror-hints,
+.CodeMirror.cm-s-idea .CodeMirror-hints {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.CodeMirror.cm-s-default .CodeMirror-hint,
+.CodeMirror.cm-s-eclipse .CodeMirror-hint,
+.CodeMirror.cm-s-idea .CodeMirror-hint {
+    color: #2d3748;
+}
+
+.CodeMirror.cm-s-default .CodeMirror-hint-active,
+.CodeMirror.cm-s-eclipse .CodeMirror-hint-active,
+.CodeMirror.cm-s-idea .CodeMirror-hint-active,
+.CodeMirror.cm-s-default .CodeMirror-hint:hover,
+.CodeMirror.cm-s-eclipse .CodeMirror-hint:hover,
+.CodeMirror.cm-s-idea .CodeMirror-hint:hover {
+    background: #f7fafc;
+    border-left-color: #00d4aa;
+    color: #1a202c;
+}

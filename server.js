@@ -8,7 +8,11 @@ const {exec} = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
+// Load environment variables
+require('dotenv').config();
+
 const ACTIONS = require('./src/actions/Actions');
+const aiService = require('./services/aiService');
 
 const server = http.createServer(app);
 const io = new Server(server);
@@ -178,6 +182,41 @@ io.on('connection', (socket) => {
             cursor,
             username,
         });
+    });
+
+    socket.on(ACTIONS.AI_CODE_COMPLETION, async ({roomId, code, language, cursor, requestId}) => {
+        console.log('AI Completion requested for language:', language);
+        
+        try {
+            // Get AI completions
+            const suggestions = await aiService.getCodeCompletions(
+                code, 
+                language, 
+                cursor, 
+                process.env.AI_MAX_SUGGESTIONS || 3
+            );
+            
+            // Send response back to the requesting user only
+            console.log('Sending AI completion response:', { requestId, suggestions: suggestions.length, success: true });
+            socket.emit(ACTIONS.AI_COMPLETION_RESPONSE, {
+                requestId,
+                suggestions,
+                success: true,
+                timestamp: new Date().toISOString()
+            });
+            
+        } catch (error) {
+            console.error('AI Completion error:', error);
+            
+            // Send error response
+            socket.emit(ACTIONS.AI_COMPLETION_RESPONSE, {
+                requestId,
+                suggestions: [],
+                success: false,
+                error: 'AI completion service temporarily unavailable',
+                timestamp: new Date().toISOString()
+            });
+        }
     });
 
     socket.on('disconnecting', () => {
